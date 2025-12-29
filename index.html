@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Society Management System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+   :root{
+  --bg:#fff7ed;           /* page background (light orange tint) */
+  --muted:#fff;           /* sidebar background */
+  --card:#ffffff;         /* card surface */
+  --ink:#1f2937;          /* main text (dark gray) */
+  --ink-soft:#6b7280;     /* muted text */
+  --primary:#f97316;      /* ORANGE (main action color) */
+  --accent:#fb923c;       /* light orange */
+  --warning:#f59e0b;
+  --danger:#ef4444;
+}
+
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; color:var(--ink);}
+    .app-shell{
+  min-height:100vh;
+  background:linear-gradient(180deg,#fff7ed,#ffffff 40%);
+}
+ /* smooth header -> content */
+    .glass{backdrop-filter: blur(8px); background:rgba(255,255,255,.08);}    
+    .card{background:var(--card); border-radius:16px; box-shadow:0 8px 24px rgba(2,6,23,.08);}  
+    .btn{border-radius:12px; padding:10px 14px; font-weight:700;}
+.btn-primary{
+  background:#c2410c;   /* DARK ORANGE */
+  color:white;
+}
+.btn-primary:hover{
+  background:#9a3412;   /* MORE DARK on hover */
+}
+
+    .btn-primary{background:var(--primary); color:#fff;}
+    .btn-accent{background:var(--accent); color:#06281b;}
+    .btn-ghost{background:transparent; border:1px solid #e5e7eb;}
+    .chip{padding:4px 10px; border-radius:999px; font-size:12px; display:inline-flex; gap:6px; align-items:center;}
+    .chip-ok{background:#ecfdf5; color:#065f46;} .chip-warn{background:#fffbeb; color:#92400e;} .chip-danger{background:#fee2e2; color:#991b1b;} .chip-mute{background:#f1f5f9; color:#334155;}
+    .input{border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px; outline:none; width:100%;}
+    .label{font-size:12px; font-weight:700; color:#6b7280; letter-spacing:.04em; text-transform:uppercase;}
+    .table{width:100%; border-collapse:collapse;} .table th,.table td{padding:12px; border-bottom:1px solid #f1f5f9; text-align:left;} .table th{font-size:12px; color:#6b7280; text-transform:uppercase;}
+    .sidebar-btn{width:100%; text-align:left; padding:.65rem 1rem; border-radius:12px; font-weight:600;}
+    .sidebar-btn.active{
+  background:#ffedd5;
+  color:#c2410c;
+  font-weight:700;
+}
+
+    .modal{position:fixed; inset:0; background:rgba(15,23,42,.6); display:none; align-items:center; justify-content:center; padding:16px;}
+    .modal.active{display:flex;}
+    .toast{position:fixed; right:16px; bottom:16px; display:grid; gap:8px; z-index:40;}
+  </style>
+</head>
+<body>
+   <!-- LOGIN SCREEN -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center bg-orange-50">
+  <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center mb-6">Society Login</h2>
+
+    <label class="block text-sm font-semibold">Login As</label>
+    <select id="loginRole" class="w-full border p-2 rounded mb-4">
+      <option value="admin">Admin</option>
+      <option value="resident">Resident</option>
+    </select>
+
+    <label class="block text-sm font-semibold">Username</label>
+    <input id="loginUser" class="w-full border p-2 rounded mb-4">
+
+    <label class="block text-sm font-semibold">Password</label>
+    <input id="loginPass" type="password" class="w-full border p-2 rounded mb-6">
+
+    <button onclick="doLogin()" class="w-full bg-orange-600 text-white py-2 rounded font-bold">
+      Login
+    </button>
+
+    <p id="loginError" class="text-red-500 text-sm mt-3 text-center"></p>
+  </div>
+</div>
+
+  <div id="appShell" class="app-shell grid grid-cols-1 md:grid-cols-[280px_1fr] hidden">
+
+    <!-- Sidebar -->
+    <aside class="md:sticky md:top-0 md:h-screen p-6 text-gray-800"
+       style="background:#ffffff; border-right:1px solid #fed7aa">
+     <button onclick="logout()" class="btn btn-ghost mt-6">
+      Logout
+     </button>
+
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-11 w-11 rounded-2xl grid place-content-center font-extrabold" style="background:var(--accent); color:#052e22">SM</div>
+        <div>
+          <div class="text-lg font-extrabold">Society Manager</div>
+          <div class="text-xs text-slate-400">Admin Console</div>
+        </div>
+      </div>
+      <nav id="nav" class="grid gap-1"></nav>
+      <div class="mt-6 grid gap-2">
+        <button id="exportBtn" class="btn btn-ghost text-white/90">Export Data</button>
+        <input type="file" id="importInput" accept="application/json" class="hidden"/>
+        <button id="importBtn" class="btn btn-ghost text-white/90">Import Data</button>
+      </div>
+      <p class="text-xs text-slate-500 mt-4">Data stays in your browser (localStorage). Export before clearing cache.</p>
+    </aside>
+
+    <!-- Main -->
+    <main class="p-6 md:p-10 space-y-6">
+      <!-- Topbar -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 id="pageTitle" class="text-3xl font-extrabold text-gray-900">Dashboard</h1>
+
+          <p id="pageSubtitle" class="text-slate-200/90">Overview & quick stats</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <input id="globalSearch" class="input w-48 md:w-72" placeholder="Search everything…"/>
+          </div>
+          <button class="btn btn-primary" id="addActionBtn">Add New</button>
+          <!-- Notifications bell -->
+          <button id="notifBtn" class="btn btn-ghost relative" title="Notifications">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9V8a6 6 0 10-12 0v1a8.967 8.967 0 01-2.311 6.773c1.733.64 3.56 1.085 5.454 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+            <span id="notifDot" class="absolute -top-1 -right-1 text-xs bg-red-500 text-white rounded-full px-1 hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Notification Center -->
+      <div id="notifPanel" class="card p-0 hidden">
+        <div class="flex items-center justify-between p-4 border-b">
+          <div class="font-bold">Notifications</div>
+          <div class="flex gap-2">
+            <button id="markAllRead" class="btn btn-ghost text-sm">Mark all read</button>
+            <button id="clearAll" class="btn btn-ghost text-sm">Clear</button>
+          </div>
+        </div>
+        <ul id="notifList" class="divide-y"></ul>
+      </div>
+
+      <!-- Page content -->
+      <div id="content" class="space-y-6"></div>
+
+      <!-- Modals -->
+      <div id="modal" class="modal">
+        <div class="card w-full max-w-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold" id="modalTitle">Add Item</h3>
+            <button class="btn btn-ghost" id="modalClose">Close</button>
+          </div>
+          <form id="modalForm" class="grid gap-4"></form>
+          <div class="mt-6 flex justify-end gap-2">
+            <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+            <button class="btn btn-primary" id="modalSave">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toaster -->
+      <div id="toasts" class="toast"></div>
+    </main>
+  </div>
+
+
+  <script>
+   function doLogin(){
+  const roleSel = document.getElementById('loginRole').value;
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+
+  // HARD CODED (VIVA SAFE)
+  if(roleSel === 'admin' && user === 'admin' && pass === 'admin123'){
+    localStorage.setItem('role','admin');
+  }
+  else if(roleSel === 'resident' && user === 'resident' && pass === 'resident123'){
+    localStorage.setItem('role','resident');
+  }
+  else{
+    document.getElementById('loginError').innerText = 'Invalid credentials';
+    return;
+  }
+
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').classList.remove('hidden');
+  applyRoleAccess(roleSel);
+}
+// ---------- AUTH ----------
+window.onload = () => {
+  const role = localStorage.getItem('role');
+
+  if(role){
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appShell').classList.remove('hidden');
+    applyRoleAccess(role);
+  }
+};
+
+    // ------------------------
+    // Local Store (with new sections)
+    // ------------------------
+    const Store = {
+      key:'society-manager-data-v2',
+      load(){ const raw = localStorage.getItem(this.key); try{ return raw? JSON.parse(raw): null }catch{ return null } },
+      save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
+    };
+function doLogin(){
+  const roleSel = document.getElementById('loginRole').value;
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+
+  // HARD CODED (VIVA SAFE)
+  if(roleSel === 'admin' && user === 'admin' && pass === 'admin123'){
+    localStorage.setItem('role','admin');
+  }
+  else if(roleSel === 'resident' && user === 'resident' && pass === 'resident123'){
+    localStorage.setItem('role','resident');
+  }
+  else{
+    document.getElementById('loginError').innerText = 'Invalid credentials';
+    return;
+  }
+
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').classList.remove('hidden');
+  applyRoleAccess(roleSel);
+}
+function applyRoleAccess(role){
+  if(role === 'resident'){
+    const restricted = ['settings','gate','rules','meetings'];
+    restricted.forEach(id=>{
+      const btn = document.getElementById('nav-'+id);
+      if(btn) btn.style.display = 'none';
+    });
+  }
+}
+function logout(){
+  localStorage.removeItem('role');
+  location.reload();
+}
+
+
+
+    const emptyDB = { 
+      residents:[], maintenance:[], payments:[], complaints:[], visitors:[], notices:[],
+      meetings:[], rules:[], helpContacts:[
+        { id: uid(), role:'Electrician', name:'Default Electrician', phone:'9999999999' },
+        { id: uid(), role:'Plumber', name:'Default Plumber', phone:'9999999998' },
+        { id: uid(), role:'Carpenter', name:'Default Carpenter', phone:'9999999997' },
+        { id: uid(), role:'Painter', name:'Default Painter', phone:'9999999996' },
+      ],
+      gateKeepers:[],
+      notifications:[]
+    };
+
+    let db = Store.load() || seed();
+
+    function seed(){
+      const d = structuredClone(emptyDB);
+      d.residents = [
+        { id: uid(), name:'Amit Patel', flat:'A-101', phone:'9876543210', email:'amit@example.com', vehicles:1 },
+        { id: uid(), name:'Neha Sharma', flat:'B-204', phone:'9123456780', email:'neha@example.com', vehicles:2 },
+        { id: uid(), name:'Rahul Verma', flat:'C-306', phone:'9988776655', email:'rahul@example.com', vehicles:1 },
+      ];
+      d.maintenance = [
+        { id: uid(), title:'Lift service', unit:'B-204', status:'Open', createdAt:today(), details:'Lift stuck intermittently' },
+        { id: uid(), title:'Water leakage', unit:'C-306', status:'In Progress', createdAt:today(-2), details:'Leak in bathroom' },
+      ];
+      d.payments = [
+        { id: uid(), payer:'Amit Patel', unit:'A-101', amount:1500, period:'Aug 2025', status:'Paid', date:today() },
+        { id: uid(), payer:'Neha Sharma', unit:'B-204', amount:1500, period:'Aug 2025', status:'Pending', date:'' },
+      ];
+      d.complaints = [
+        { id: uid(), by:'Rahul Verma', unit:'C-306', category:'Noise', status:'Open', createdAt:today(-1), details:'Loud music after 10pm' },
+      ];
+      d.visitors = [ { id: uid(), name:'Electrician', unit:'A-101', type:'Service', timeIn:nowTime(), timeOut:'' } ];
+      d.notices = [ { id: uid(), title:'Ganesh Chaturthi Celebration', body:'Join us on Sept 7, 7 PM at Clubhouse.', createdAt:today() } ];
+      d.meetings = [ { id: uid(), title:'Monthly Committee', date:today(5), time:'19:00', agenda:'Budget & security', venue:'Clubhouse', notes:'', status:'Scheduled' } ];
+      d.rules = [ { id: uid(), text:'Quiet hours: 10:00 PM to 7:00 AM' }, { id: uid(), text:'Helmet required for two-wheelers inside campus' } ];
+      d.gateKeepers = [ { id: uid(), name:'Suresh', shift:'Day', phone:'9000000001' }, { id: uid(), name:'Mahesh', shift:'Night', phone:'9000000002' } ];
+      Store.save(d); return d;
+    }
+
+    // -------------- Utils --------------
+    function uid(){ return 'id-' + Math.random().toString(36).slice(2,9) }
+    function today(off=0){ const d=new Date(); d.setDate(d.getDate()+off); return d.toISOString().slice(0,10) }
+    function nowTime(){ const d=new Date(); return d.toTimeString().slice(0,5) }
+    function currency(n){ return '₹' + Number(n||0).toLocaleString('en-IN') }
+
+    // -------------- Notifications --------------
+    function pushNotif(title, body){
+      db.notifications.push({ id:uid(), title, body, createdAt:new Date().toISOString(), read:false });
+      Store.save(db); renderNotif(); toast(title);
+    }
+
+    const notifBtn = document.getElementById('notifBtn');
+    const notifPanel = document.getElementById('notifPanel');
+    const notifList = document.getElementById('notifList');
+    const notifDot = document.getElementById('notifDot');
+    document.getElementById('markAllRead').onclick = ()=>{ db.notifications = db.notifications.map(n=>({...n,read:true})); Store.save(db); renderNotif(); };
+    document.getElementById('clearAll').onclick = ()=>{ if(confirm('Clear all notifications?')){ db.notifications=[]; Store.save(db); renderNotif(); } };
+    notifBtn.onclick = ()=> notifPanel.classList.toggle('hidden');
+
+    function renderNotif(){
+      const unread = db.notifications.filter(n=>!n.read).length;
+      notifDot.textContent = unread>9? '9+': String(unread);
+      notifDot.classList.toggle('hidden', unread===0);
+      notifList.innerHTML = db.notifications.slice().reverse().map(n=>`
+        <li class="p-4 ${n.read? 'bg-white': 'bg-emerald-50'}">
+          <div class="font-semibold">${n.title}</div>
+          <div class="text-sm text-slate-600">${n.body||''}</div>
+          <div class="text-xs text-slate-400 mt-1">${new Date(n.createdAt).toLocaleString()}</div>
+        </li>`).join('') || '<li class="p-4 text-slate-500">No notifications</li>';
+    }
+
+    // -------------- Nav / Pages --------------
+    const PAGES = [
+      { id:'dashboard', label:'Dashboard', subtitle:'Overview & quick stats' },
+      { id:'bills', label:'Bills', subtitle:'Maintenance dues & receipts' },
+      { id:'complaints', label:'Complaints', subtitle:'Log & resolve issues' },
+      { id:'meetings', label:'Meetings', subtitle:'Schedule & minutes' },
+      { id:'visitors', label:'Visitors', subtitle:'Entry log & checkout' },
+      { id:'gate', label:'Gate Keeper', subtitle:'Staff directory & shifts' },
+      { id:'rules', label:'Rules & Regulations', subtitle:'Community policies' },
+      { id:'help', label:'Need Help', subtitle:'Find a pro or raise a request' },
+      { id:'notices', label:'Notifications Sector', subtitle:'Announcements & alerts' },
+      { id:'residents', label:'Residents', subtitle:'Directory & unit info' },
+      { id:'settings', label:'Admin Settings', subtitle:'Contacts & preferences' },
+    ];
+
+    const nav = document.getElementById('nav');
+    const content = document.getElementById('content');
+    const pageTitle = document.getElementById('pageTitle');
+    const pageSubtitle = document.getElementById('pageSubtitle');
+    const globalSearch = document.getElementById('globalSearch');
+    const addActionBtn = document.getElementById('addActionBtn');
+
+    let activePage = 'dashboard';
+
+    PAGES.forEach(p=>{
+      const b = document.createElement('button');
+      b.className = 'sidebar-btn'; b.textContent = p.label; b.id = 'nav-'+p.id; b.onclick=()=>setPage(p.id); nav.appendChild(b);
+    });
+
+    function highlightNav(){ PAGES.forEach(p=>{ const el = document.getElementById('nav-'+p.id); el.classList.toggle('active', p.id===activePage); }); }
+    function setPage(id){ activePage=id; pageTitle.textContent=PAGES.find(p=>p.id===id).label; pageSubtitle.textContent=PAGES.find(p=>p.id===id).subtitle; content.innerHTML=''; highlightNav(); renderPage(); }
+
+    // Global search filters tables in-page
+    globalSearch.addEventListener('input', renderPage);
+
+    // Export/Import
+    document.getElementById('exportBtn').onclick = ()=>{ const blob = new Blob([JSON.stringify(db,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='society-data-'+today()+'.json'; a.click(); };
+    const importInput = document.getElementById('importInput');
+    document.getElementById('importBtn').onclick = ()=> importInput.click();
+    importInput.onchange = (e)=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ db=JSON.parse(r.result); Store.save(db); setPage(activePage); toast('Import successful'); }catch{ toast('Invalid file','danger'); } }; r.readAsText(f); };
+
+    // -------------- Renderers --------------
+    function renderPage(){
+      const q = (globalSearch.value||'').toLowerCase();
+      addActionBtn.style.display = 'inline-flex';
+      if(activePage==='dashboard'){ addActionBtn.style.display='none'; renderDashboard(); return }
+      if(activePage==='bills') return renderPayments(q);
+      if(activePage==='complaints') return renderComplaints(q);
+      if(activePage==='meetings') return renderMeetings(q);
+      if(activePage==='visitors') return renderVisitors(q);
+      if(activePage==='gate') return renderGate(q);
+      if(activePage==='rules') return renderRules(q);
+      if(activePage==='help') return renderHelp();
+      if(activePage==='notices') return renderNotices(q);
+      if(activePage==='residents') return renderResidents(q);
+      if(activePage==='settings') return renderSettings();
+    }
+
+    // ----- Dashboard -----
+    function renderDashboard(){
+      const kpis = document.createElement('div'); kpis.className='grid grid-cols-1 md:grid-cols-4 gap-4';
+      const totalFlats = new Set(db.residents.map(r=>r.flat)).size;
+      const openTickets = db.maintenance.filter(m=>m.status!=='Closed').length + db.complaints.filter(c=>c.status!=='Closed').length;
+      const dues = db.payments.filter(p=>p.status!=='Paid').reduce((s,p)=>s+Number(p.amount||0),0);
+      kpis.innerHTML = `
+        <div class="card p-5"><div class="label">Flats</div><div class="text-2xl font-extrabold">${totalFlats}</div></div>
+        <div class="card p-5"><div class="label">Residents</div><div class="text-2xl font-extrabold">${db.residents.length}</div></div>
+        <div class="card p-5"><div class="label">Open Tickets</div><div class="text-2xl font-extrabold">${openTickets}</div></div>
+        <div class="card p-5"><div class="label">Outstanding Dues</div><div class="text-2xl font-extrabold">${currency(dues)}</div></div>`;
+
+      const charts = document.createElement('div'); charts.className='grid grid-cols-1 lg:grid-cols-2 gap-4';
+      charts.innerHTML = `
+        <div class="card p-5"><div class="label mb-3">Payments (last 6)</div><canvas id="chartPayments"></canvas></div>
+        <div class="card p-5"><div class="label mb-3">Tickets by Status</div><canvas id="chartTickets"></canvas></div>`;
+
+      const quick = document.createElement('div'); quick.className='grid grid-cols-1 xl:grid-cols-2 gap-4';
+      quick.innerHTML = `
+        <div class="card p-5"><div class="flex items-center justify-between mb-3"><div class="label">Recent Maintenance</div><button class="btn btn-ghost text-sm" onclick="setPage('complaints')">Complaints</button></div><table class="table"><thead><tr><th>Title</th><th>Unit</th><th>Status</th><th>Created</th></tr></thead><tbody id="recentMaint"></tbody></table></div>
+        <div class="card p-5"><div class="flex items-center justify-between mb-3"><div class="label">Recent Payments</div><button class="btn btn-ghost text-sm" onclick="setPage('bills')">View All</button></div><table class="table"><thead><tr><th>Payer</th><th>Unit</th><th>Amount</th><th>Status</th></tr></thead><tbody id="recentPays"></tbody></table></div>`;
+
+      content.append(kpis, charts, quick);
+
+      document.getElementById('recentMaint').innerHTML = db.maintenance.slice(-5).reverse().map(m=>`<tr><td>${m.title}</td><td>${m.unit}</td><td>${chip(m.status)}</td><td>${m.createdAt}</td></tr>`).join('');
+      document.getElementById('recentPays').innerHTML = db.payments.slice(-5).reverse().map(p=>`<tr><td>${p.payer}</td><td>${p.unit}</td><td>${currency(p.amount)}</td><td>${chip(p.status==='Paid'?'Paid':'Pending')}</td></tr>`).join('');
+
+      setTimeout(()=>{
+        const last = db.payments.slice(-6);
+        new Chart(document.getElementById('chartPayments'),{ type:'bar', data:{ labels:last.map(p=>p.period||p.date||'NA'), datasets:[{ label:'Amount', data:last.map(p=>p.amount||0) }] } });
+        const openM = db.maintenance.filter(x=>x.status==='Open').length;
+        const progM = db.maintenance.filter(x=>x.status==='In Progress').length;
+        const closedM = db.maintenance.filter(x=>x.status==='Closed').length;
+        const openC = db.complaints.filter(x=>x.status==='Open').length;
+        const progC = db.complaints.filter(x=>x.status==='In Progress').length;
+        const closedC = db.complaints.filter(x=>x.status==='Closed').length;
+        new Chart(document.getElementById('chartTickets'),{ type:'doughnut', data:{ labels:['Maint Open','Maint In Progress','Maint Closed','Compl Open','Compl In Progress','Compl Closed'], datasets:[{ data:[openM,progM,closedM,openC,progC,closedC] }] } });
+      },0);
+    }
+
+    function chip(status){
+      const map={ 'Open':'chip chip-warn', 'In Progress':'chip chip-mute', 'Closed':'chip chip-ok', 'Paid':'chip chip-ok', 'Pending':'chip chip-warn', 'Scheduled':'chip chip-mute', 'Completed':'chip chip-ok' };
+      return `<span class="${map[status]||'chip chip-mute'}">${status}</span>`
+    }
+
+    // ----- Residents (unchanged core) -----
+    addActionBtn.onclick = ()=>{
+      if(activePage==='residents') return openResidentModal();
+      if(activePage==='bills') return openPaymentModal();
+      if(activePage==='complaints') return openComplaintModal();
+      if(activePage==='visitors') return openVisitorModal();
+      if(activePage==='notices') return openNoticeModal();
+      if(activePage==='meetings') return openMeetingModal();
+      if(activePage==='gate') return openGateModal();
+      if(activePage==='rules') return openRuleModal();
+      if(activePage==='help') return openHelpContactModal();
+      if(activePage==='settings') return openSettingsModal();
+    };
+
+    function renderResidents(q){
+      const wrap = document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML = `
+        <div class="flex items-center justify-between mb-4"><div class="label">Residents Directory</div><div class="text-sm text-slate-500">${db.residents.length} records</div></div>
+        <table class="table"><thead><tr><th>Name</th><th>Flat</th><th>Phone</th><th>Email</th><th>Vehicles</th><th></th></tr></thead><tbody id="resTbody"></tbody></table>`;
+      content.appendChild(wrap);
+      const rows = db.residents.filter(r=>[r.name,r.flat,r.phone,r.email].join(' ').toLowerCase().includes(q)).map(r=>`
+        <tr><td class="font-medium">${r.name}</td><td>${r.flat}</td><td>${r.phone}</td><td>${r.email}</td><td>${r.vehicles||0}</td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='editResident("${r.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delResident("${r.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#resTbody').innerHTML = rows || `<tr><td colspan="6" class="py-6 text-center text-slate-500">No matches</td></tr>`;
+    }
+
+    function openResidentModal(ex){ const d=ex||{name:'',flat:'',phone:'',email:'',vehicles:0};
+      openModal(ex?'Edit Resident':'Add Resident',`
+        <div><div class="label">Name</div><input class="input" id="f_name" value="${d.name}"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><div class="label">Flat</div><input class="input" id="f_flat" value="${d.flat}"></div>
+          <div><div class="label">Phone</div><input class="input" id="f_phone" value="${d.phone}"></div>
+        </div>
+        <div><div class="label">Email</div><input class="input" id="f_email" value="${d.email}"></div>
+        <div><div class="label">Vehicles</div><input type="number" min="0" class="input" id="f_veh" value="${d.vehicles}"></div>`,()=>{
+        const entry={ id:ex?.id||uid(), name:byId('f_name').value.trim(), flat:byId('f_flat').value.trim(), phone:byId('f_phone').value.trim(), email:byId('f_email').value.trim(), vehicles:Number(byId('f_veh').value||0) };
+        if(!entry.name||!entry.flat) return alert('Name & Flat are required');
+        if(ex) db.residents=db.residents.map(r=>r.id===ex.id?entry:r); else db.residents.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage();
+      });
+    }
+    function editResident(id){ openResidentModal(db.residents.find(x=>x.id===id)); }
+    function delResident(id){ if(confirm('Delete resident?')){ db.residents=db.residents.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Payments (Bills) -----
+    function renderPayments(q){
+      const wrap=document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML=`<div class="flex items-center justify-between mb-4"><div class="label">Bills</div><div class="text-sm text-slate-500">${db.payments.length} records</div></div>
+      <table class="table"><thead><tr><th>Payer</th><th>Unit</th><th>Amount</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody id="payTbody"></tbody></table>`;
+      content.appendChild(wrap);
+      const rows=db.payments.filter(p=>[p.payer,p.unit,p.period,p.status].join(' ').toLowerCase().includes(q)).map(p=>`
+        <tr><td class="font-medium">${p.payer}</td><td>${p.unit}</td><td>${currency(p.amount)}</td><td>${p.period||''}</td><td>${chip(p.status)}</td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='markPaid("${p.id}")'>Mark Paid</button><button class="btn btn-ghost text-sm" onclick='editPayment("${p.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delPayment("${p.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#payTbody').innerHTML = rows || `<tr><td colspan="6" class="py-6 text-center text-slate-500">No matches</td></tr>`;
+    }
+    function openPaymentModal(ex){ const d=ex||{payer:'',unit:'',amount:1500,period:'',status:'Pending',date:''};
+      openModal(ex?'Edit Bill':'Add Bill',`
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><div class="label">Payer</div><input class="input" id="p_payer" value="${d.payer}"></div><div><div class="label">Unit</div><input class="input" id="p_unit" value="${d.unit}"></div></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Amount</div><input type="number" class="input" id="p_amount" value="${d.amount}"></div><div><div class="label">Period</div><input class="input" id="p_period" placeholder="Aug 2025" value="${d.period}"></div><div><div class="label">Status</div><select id="p_status" class="input"><option ${d.status==='Pending'?'selected':''}>Pending</option><option ${d.status==='Paid'?'selected':''}>Paid</option></select></div></div>`,()=>{
+        const entry={ id:ex?.id||uid(), payer:byId('p_payer').value.trim(), unit:byId('p_unit').value.trim(), amount:Number(byId('p_amount').value||0), period:byId('p_period').value.trim(), status:byId('p_status').value, date: byId('p_status').value==='Paid'? today(): '' };
+        if(!entry.payer||!entry.unit) return alert('Payer & Unit required');
+        if(ex) db.payments=db.payments.map(m=>m.id===ex.id?entry:m); else db.payments.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage(); pushNotif('Bill updated', `${entry.payer} • ${entry.period} • ${currency(entry.amount)}`);
+      });
+    }
+    function markPaid(id){ db.payments=db.payments.map(p=> p.id===id?{...p,status:'Paid',date:today()}:p); Store.save(db); renderPage(); pushNotif('Payment received', id); }
+    function editPayment(id){ openPaymentModal(db.payments.find(x=>x.id===id)); }
+    function delPayment(id){ if(confirm('Delete bill?')){ db.payments=db.payments.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Complaints -----
+    function renderComplaints(q){
+      const wrap=document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML=`<div class="flex items-center justify-between mb-4"><div class="label">Complaints</div><div class="text-sm text-slate-500">${db.complaints.length} records</div></div>
+      <table class="table"><thead><tr><th>By</th><th>Unit</th><th>Category</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody id="cmpTbody"></tbody></table>`;
+      content.appendChild(wrap);
+      const rows=db.complaints.filter(c=>[c.by,c.unit,c.category,c.status,c.createdAt].join(' ').toLowerCase().includes(q)).map(c=>`
+        <tr><td class="font-medium">${c.by}</td><td>${c.unit}</td><td>${c.category}</td><td>${chip(c.status)}</td><td>${c.createdAt}</td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='editComplaint("${c.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delComplaint("${c.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#cmpTbody').innerHTML = rows || `<tr><td colspan="6" class="py-6 text-center text-slate-500">No matches</td></tr>`;
+    }
+    function openComplaintModal(ex){ const d=ex||{by:'',unit:'',category:'Noise',status:'Open',createdAt:today(),details:''};
+      openModal(ex?'Edit Complaint':'New Complaint',`
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><div class="label">By</div><input class="input" id="c_by" value="${d.by}"></div><div><div class="label">Unit</div><input class="input" id="c_unit" value="${d.unit}"></div></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Category</div><select id="c_cat" class="input">${['Noise','Cleanliness','Parking','Security','Other'].map(cat=>`<option ${d.category===cat?'selected':''}>${cat}</option>`).join('')}</select></div>
+        <div><div class="label">Status</div><select id="c_status" class="input"><option ${d.status==='Open'?'selected':''}>Open</option><option ${d.status==='In Progress'?'selected':''}>In Progress</option><option ${d.status==='Closed'?'selected':''}>Closed</option></select></div>
+        <div><div class="label">Created</div><input type="date" class="input" id="c_created" value="${d.createdAt}"></div></div>
+        <div><div class="label">Details</div><textarea class="input" id="c_details">${d.details}</textarea></div>`,()=>{
+        const entry={ id:ex?.id||uid(), by:byId('c_by').value.trim(), unit:byId('c_unit').value.trim(), category:byId('c_cat').value, status:byId('c_status').value, createdAt:byId('c_created').value, details:byId('c_details').value.trim() };
+        if(!entry.by||!entry.unit) return alert('Name & Unit required');
+        if(ex) db.complaints=db.complaints.map(m=>m.id===ex.id?entry:m); else db.complaints.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage(); pushNotif('Complaint updated', `${entry.unit} • ${entry.category}`);
+      });
+    }
+    function editComplaint(id){ openComplaintModal(db.complaints.find(x=>x.id===id)); }
+    function delComplaint(id){ if(confirm('Delete complaint?')){ db.complaints=db.complaints.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Meetings -----
+    function renderMeetings(q){
+      const wrap=document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML=`<div class="flex items-center justify-between mb-4"><div class="label">Meetings</div><div class="text-sm text-slate-500">${db.meetings.length} records</div></div>
+      <table class="table"><thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Venue</th><th>Status</th><th></th></tr></thead><tbody id="meetTbody"></tbody></table>`;
+      content.appendChild(wrap);
+      const rows=db.meetings.filter(m=>[m.title,m.date,m.time,m.venue,m.status].join(' ').toLowerCase().includes(q)).map(m=>`
+        <tr><td class="font-medium">${m.title}</td><td>${m.date}</td><td>${m.time}</td><td>${m.venue}</td><td>${chip(m.status)}</td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='editMeeting("${m.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delMeeting("${m.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#meetTbody').innerHTML = rows || `<tr><td colspan="6" class="py-6 text-center text-slate-500">No matches</td></tr>`;
+    }
+    function openMeetingModal(ex){ const d=ex||{title:'',date:today(),time:'19:00',agenda:'',venue:'Clubhouse',notes:'',status:'Scheduled'};
+      openModal(ex?'Edit Meeting':'Schedule Meeting',`
+        <div><div class="label">Title</div><input class="input" id="m_title" value="${d.title}"></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Date</div><input type="date" class="input" id="m_date" value="${d.date}"></div>
+        <div><div class="label">Time</div><input class="input" id="m_time" value="${d.time}"></div>
+        <div><div class="label">Status</div><select id="m_status" class="input"><option ${d.status==='Scheduled'?'selected':''}>Scheduled</option><option ${d.status==='Completed'?'selected':''}>Completed</option><option ${d.status==='Cancelled'?'selected':''}>Cancelled</option></select></div></div>
+        <div><div class="label">Venue</div><input class="input" id="m_venue" value="${d.venue}"></div>
+        <div><div class="label">Agenda</div><textarea class="input" id="m_agenda">${d.agenda}</textarea></div>
+        <div><div class="label">Notes / Minutes</div><textarea class="input" id="m_notes">${d.notes}</textarea></div>`,()=>{
+        const entry={ id:ex?.id||uid(), title:byId('m_title').value.trim(), date:byId('m_date').value, time:byId('m_time').value.trim(), venue:byId('m_venue').value.trim(), agenda:byId('m_agenda').value.trim(), notes:byId('m_notes').value.trim(), status:byId('m_status').value };
+        if(!entry.title) return alert('Title required');
+        if(ex) db.meetings=db.meetings.map(m=>m.id===ex.id?entry:m); else db.meetings.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage(); pushNotif('Meeting updated', `${entry.title} • ${entry.date} ${entry.time}`);
+      });
+    }
+    function editMeeting(id){ openMeetingModal(db.meetings.find(x=>x.id===id)); }
+    function delMeeting(id){ if(confirm('Delete meeting?')){ db.meetings=db.meetings.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Visitors -----
+    function renderVisitors(q){ const wrap=document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML=`<div class="flex items-center justify-between mb-4"><div class="label">Visitor Log</div><div class="text-sm text-slate-500">${db.visitors.length} records</div></div>
+      <table class="table"><thead><tr><th>Name</th><th>Unit</th><th>Type</th><th>In</th><th>Out</th><th></th></tr></thead><tbody id="visTbody"></tbody></table>`; content.appendChild(wrap);
+      const rows=db.visitors.filter(v=>[v.name,v.unit,v.type].join(' ').toLowerCase().includes(q)).map(v=>`
+        <tr><td class="font-medium">${v.name}</td><td>${v.unit}</td><td>${v.type}</td><td>${v.timeIn}</td><td>${v.timeOut||'-'}</td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='checkoutVisitor("${v.id}")'>Check-out</button><button class="btn btn-ghost text-sm" onclick='editVisitor("${v.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delVisitor("${v.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#visTbody').innerHTML = rows || `<tr><td colspan="6" class="py-6 text-center text-slate-500">No matches</td></tr>`;
+    }
+    function openVisitorModal(ex){ const d=ex||{name:'',unit:'',type:'Guest',timeIn:nowTime(),timeOut:''};
+      openModal(ex?'Edit Visitor':'New Visitor',`
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Name</div><input class="input" id="v_name" value="${d.name}"></div><div><div class="label">Unit</div><input class="input" id="v_unit" value="${d.unit}"></div><div><div class="label">Type</div><select id="v_type" class="input">${['Guest','Delivery','Service','Cab','Other'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><div class="label">Time In</div><input class="input" id="v_in" value="${d.timeIn}"></div><div><div class="label">Time Out</div><input class="input" id="v_out" value="${d.timeOut}"></div></div>`,()=>{
+        const entry={ id:ex?.id||uid(), name:byId('v_name').value.trim(), unit:byId('v_unit').value.trim(), type:byId('v_type').value, timeIn:byId('v_in').value.trim(), timeOut:byId('v_out').value.trim() };
+        if(!entry.name||!entry.unit) return alert('Name & Unit required');
+        if(ex) db.visitors=db.visitors.map(m=>m.id===ex.id?entry:m); else db.visitors.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage();
+      });
+    }
+    function checkoutVisitor(id){ db.visitors=db.visitors.map(v=> v.id===id?{...v,timeOut:nowTime()}:v); Store.save(db); renderPage(); }
+    function editVisitor(id){ openVisitorModal(db.visitors.find(x=>x.id===id)); }
+    function delVisitor(id){ if(confirm('Delete visitor?')){ db.visitors=db.visitors.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Gate Keeper -----
+    function renderGate(q){ const wrap=document.createElement('div'); wrap.className='card p-5';
+      wrap.innerHTML=`<div class="flex items-center justify-between mb-4"><div class="label">Gate Keepers</div><div class="text-sm text-slate-500">${db.gateKeepers.length} staff</div></div>
+      <table class="table"><thead><tr><th>Name</th><th>Shift</th><th>Phone</th><th></th></tr></thead><tbody id="gkTbody"></tbody></table>`; content.appendChild(wrap);
+      const rows=db.gateKeepers.filter(g=>[g.name,g.shift,g.phone].join(' ').toLowerCase().includes(q)).map(g=>`
+        <tr><td class="font-medium">${g.name}</td><td>${g.shift}</td><td><a href="tel:${g.phone}" class="underline">${g.phone}</a></td>
+        <td class="text-right"><button class="btn btn-ghost text-sm" onclick='editGate("${g.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delGate("${g.id}")'>Delete</button></td></tr>`).join('');
+      wrap.querySelector('#gkTbody').innerHTML = rows || `<tr><td colspan="4" class="py-6 text-center text-slate-500">No staff</td></tr>`;
+    }
+    function openGateModal(ex){ const d=ex||{name:'',shift:'Day',phone:''};
+      openModal(ex?'Edit Gate Keeper':'Add Gate Keeper',`
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Name</div><input class="input" id="g_name" value="${d.name}"></div><div><div class="label">Shift</div><select id="g_shift" class="input">${['Day','Night','Relief'].map(s=>`<option ${d.shift===s?'selected':''}>${s}</option>`).join('')}</select></div><div><div class="label">Phone</div><input class="input" id="g_phone" value="${d.phone}"></div></div>`,()=>{
+        const entry={ id:ex?.id||uid(), name:byId('g_name').value.trim(), shift:byId('g_shift').value, phone:byId('g_phone').value.trim() };
+        if(!entry.name) return alert('Name required');
+        if(ex) db.gateKeepers=db.gateKeepers.map(m=>m.id===ex.id?entry:m); else db.gateKeepers.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage();
+      });
+    }
+    function editGate(id){ openGateModal(db.gateKeepers.find(x=>x.id===id)); }
+    function delGate(id){ if(confirm('Delete gate keeper?')){ db.gateKeepers=db.gateKeepers.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Rules & Regulations -----
+    function renderRules(q){ const wrap=document.createElement('div'); wrap.className='space-y-3';
+      db.rules.filter(r=>r.text.toLowerCase().includes(q)).forEach(r=>{ const c=document.createElement('div'); c.className='card p-4 flex items-start justify-between gap-4'; c.innerHTML=`<div>${r.text}</div><div class='flex gap-2'><button class='btn btn-ghost text-sm' onclick='editRule("${r.id}")'>Edit</button><button class='btn btn-ghost text-sm' onclick='delRule("${r.id}")'>Delete</button></div>`; wrap.appendChild(c); });
+      if(wrap.children.length===0){ const empty=document.createElement('div'); empty.className='card p-8 text-center text-slate-500'; empty.textContent='No rules yet'; wrap.appendChild(empty) }
+      content.appendChild(wrap);
+    }
+    function openRuleModal(ex){ const d=ex||{text:''}; openModal(ex?'Edit Rule':'Add Rule',`
+      <div><div class="label">Rule text</div><textarea class="input" id="r_text" rows="4">${d.text}</textarea></div>`,()=>{
+        const entry={ id:ex?.id||uid(), text:byId('r_text').value.trim() };
+        if(!entry.text) return alert('Rule text required');
+        if(ex) db.rules=db.rules.map(m=>m.id===ex.id?entry:m); else db.rules.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage();
+      }); }
+    function editRule(id){ openRuleModal(db.rules.find(x=>x.id===id)); }
+    function delRule(id){ if(confirm('Delete rule?')){ db.rules=db.rules.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Need Help -----
+    function renderHelp(){
+      const wrap=document.createElement('div'); wrap.className='grid grid-cols-1 lg:grid-cols-2 gap-4';
+      const quick=document.createElement('div'); quick.className='card p-5'; quick.innerHTML=`
+        <div class="label mb-3">Quick call</div>
+        <div id="helpGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+        <p class="text-sm text-slate-500 mt-3">Long-press (or right-click) a card to raise a maintenance request instead of calling.</p>`;
+      wrap.appendChild(quick);
+
+      const req=document.createElement('div'); req.className='card p-5'; req.innerHTML=`
+        <div class="flex items-center justify-between mb-3"><div class="label">Recent Service Requests</div><button class="btn btn-ghost text-sm" onclick="setPage('bills');">Go to Bills</button></div>
+        <table class="table"><thead><tr><th>Type</th><th>Unit</th><th>Details</th><th>Status</th></tr></thead><tbody id="helpReqs"></tbody></table>`;
+      wrap.appendChild(req);
+      content.appendChild(wrap);
+
+      // render contact tiles
+      const grid = quick.querySelector('#helpGrid');
+      grid.innerHTML = db.helpContacts.map(h=>`
+        <button class="border rounded-2xl p-4 hover:bg-emerald-50 text-left group" onclick="location.href='tel:${h.phone}'" oncontextmenu="event.preventDefault(); raiseService('${h.role}');">
+          <div class="text-sm text-slate-500">${h.role}</div>
+          <div class="font-bold">${h.name}</div>
+          <div class="text-xs text-slate-500">${h.phone}</div>
+          <div class="mt-2 hidden group-hover:block"><span class="chip chip-mute">Tap to call</span></div>
+        </button>`).join('');
+
+      // show last few maintenance requests raised from Need Help (tagged in details)
+      const list=req.querySelector('#helpReqs');
+      const items=db.maintenance.slice().reverse().filter(m=>/Requested via Need Help/.test(m.details||'')).slice(0,6);
+      list.innerHTML = items.map(m=>`<tr><td>${m.title}</td><td>${m.unit}</td><td>${m.details}</td><td>${chip(m.status)}</td></tr>`).join('') || `<tr><td colspan="4" class="py-6 text-center text-slate-500">No requests yet</td></tr>`;
+    }
+
+    function raiseService(type){
+      openModal('Raise Service Request',`
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Type</div><input class="input" id="h_type" value="${type}"/></div><div><div class="label">Unit</div><input class="input" id="h_unit" placeholder="A-101"/></div><div><div class="label">Urgency</div><select id="h_urg" class="input"><option>Normal</option><option>High</option></select></div></div>
+        <div><div class="label">Details</div><textarea class="input" id="h_details" rows="4" placeholder="Describe the problem"></textarea></div>`,()=>{
+        const entry={ id:uid(), title:type, unit:byId('h_unit').value.trim(), status:'Open', createdAt:today(), details:(byId('h_details').value.trim()+`
+Requested via Need Help • Urgency: ${byId('h_urg').value}`) };
+        if(!entry.unit) return alert('Unit required');
+        db.maintenance.push(entry); Store.save(db); modal.classList.remove('active'); setPage('help'); pushNotif('Service request created', `${entry.title} • ${entry.unit}`);
+      });
+    }
+    window.raiseService = raiseService;
+
+    // ----- Notices (Notification Sector) -----
+    function renderNotices(q){ const wrap=document.createElement('div'); wrap.className='space-y-4';
+      const kid = document.createElement('div'); kid.className='card p-5';
+      kid.innerHTML = `<div class="flex items-center justify-between mb-3"><div class="label">Admin Notices</div><button class="btn btn-ghost text-sm" onclick='openNoticeModal()'>New notice</button></div>`;
+      wrap.appendChild(kid);
+      db.notices.filter(n=>(n.title+n.body).toLowerCase().includes(q)).slice().reverse().forEach(n=>{
+        const c=document.createElement('div'); c.className='card p-5'; c.innerHTML=`<div class="flex items-start justify-between gap-4"><div><div class="text-lg font-bold">${n.title}</div><div class="text-slate-600 mt-1 whitespace-pre-wrap">${n.body}</div><div class="text-xs text-slate-400 mt-2">Posted on ${n.createdAt}</div></div><div class="flex gap-2"><button class="btn btn-ghost text-sm" onclick='editNotice("${n.id}")'>Edit</button><button class="btn btn-ghost text-sm" onclick='delNotice("${n.id}")'>Delete</button></div></div>`;
+        wrap.appendChild(c);
+      });
+      if(wrap.children.length===1){ const empty=document.createElement('div'); empty.className='card p-8 text-center text-slate-500'; empty.textContent='No notices yet'; wrap.appendChild(empty); }
+      content.appendChild(wrap);
+    }
+    function openNoticeModal(ex){ const d=ex||{title:'',body:'',createdAt:today()}; openModal(ex?'Edit Notice':'New Notice',`
+      <div><div class="label">Title</div><input class="input" id="n_title" value="${d.title}"></div>
+      <div><div class="label">Body</div><textarea class="input" id="n_body" rows="5">${d.body}</textarea></div>
+      <div><div class="label">Date</div><input type="date" class="input" id="n_date" value="${d.createdAt}"></div>`,()=>{
+        const entry={ id:ex?.id||uid(), title:byId('n_title').value.trim(), body:byId('n_body').value.trim(), createdAt:byId('n_date').value };
+        if(!entry.title) return alert('Title required');
+        if(ex) db.notices=db.notices.map(n=>n.id===ex.id?entry:n); else db.notices.push(entry);
+        Store.save(db); modal.classList.remove('active'); renderPage(); pushNotif('New notice', entry.title);
+      }); }
+    function editNotice(id){ openNoticeModal(db.notices.find(x=>x.id===id)); }
+    function delNotice(id){ if(confirm('Delete notice?')){ db.notices=db.notices.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    // ----- Settings -----
+    function renderSettings(){ const wrap=document.createElement('div'); wrap.className='space-y-4';
+      const help=document.createElement('div'); help.className='card p-5'; help.innerHTML=`
+        <div class="flex items-center justify-between mb-3"><div class="label">Need Help Contacts</div><button class="btn btn-ghost text-sm" onclick='openHelpContactModal()'>Add Contact</button></div>
+        <table class="table"><thead><tr><th>Role</th><th>Name</th><th>Phone</th><th></th></tr></thead><tbody id="helpTbody"></tbody></table>`; wrap.appendChild(help);
+      help.querySelector('#helpTbody').innerHTML = db.helpContacts.map(h=>`<tr><td>${h.role}</td><td>${h.name}</td><td><a class='underline' href='tel:${h.phone}'>${h.phone}</a></td><td class='text-right'><button class='btn btn-ghost text-sm' onclick='editHelpContact("${h.id}")'>Edit</button><button class='btn btn-ghost text-sm' onclick='delHelpContact("${h.id}")'>Delete</button></td></tr>`).join('') || `<tr><td colspan="4" class="py-6 text-center text-slate-500">No contacts</td></tr>`;
+      content.appendChild(wrap);
+    }
+    function openHelpContactModal(ex){ const d=ex||{role:'Electrician',name:'',phone:''}; openModal(ex?'Edit Contact':'Add Contact',`
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><div class="label">Role</div><select id="h_role" class="input">${['Electrician','Plumber','Carpenter','Painter','Other'].map(r=>`<option ${d.role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      <div><div class="label">Name</div><input class="input" id="h_name" value="${d.name}"></div><div><div class="label">Phone</div><input class="input" id="h_phone" value="${d.phone}"></div></div>`,()=>{
+        const entry={ id:ex?.id||uid(), role:byId('h_role').value, name:byId('h_name').value.trim(), phone:byId('h_phone').value.trim() };
+        if(!entry.name||!entry.phone) return alert('Name & Phone required');
+        if(ex) db.helpContacts=db.helpContacts.map(m=>m.id===ex.id?entry:m); else db.helpContacts.push(entry);
+        Store.save(db); modal.classList.remove('active'); setPage('settings');
+      }); }
+    function editHelpContact(id){ openHelpContactModal(db.helpContacts.find(x=>x.id===id)); }
+    function delHelpContact(id){ if(confirm('Delete contact?')){ db.helpContacts=db.helpContacts.filter(x=>x.id!==id); Store.save(db); renderPage(); } }
+
+    function openSettingsModal(){ /* placeholder for future general settings */ }
+
+    // ----- Shared helpers -----
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalForm = document.getElementById('modalForm');
+    const modalSave = document.getElementById('modalSave');
+    const modalClose = document.getElementById('modalClose');
+    const modalCancel = document.getElementById('modalCancel');
+    modalClose.onclick = modalCancel.onclick = ()=> modal.classList.remove('active');
+    function openModal(title, formHTML, onSave){ modalTitle.textContent=title; modalForm.innerHTML=formHTML; modal.classList.add('active'); modalSave.onclick=(e)=>{ e.preventDefault(); onSave(); }; }
+    function byId(id){ return document.getElementById(id) }
+
+    function toast(text,type='ok'){ const el=document.createElement('div'); el.className='card px-4 py-3 text-sm'; el.textContent=text; if(type==='danger') el.style.borderLeft='4px solid var(--danger)'; else el.style.borderLeft='4px solid var(--accent)'; document.getElementById('toasts').appendChild(el); setTimeout(()=>el.remove(), 2400); }
+
+    // expose inline handlers used in HTML strings
+    window.editResident=editResident; window.delResident=(id)=>{ if(confirm('Delete resident?')){ db.residents=db.residents.filter(x=>x.id!==id); Store.save(db); renderPage(); } };
+    window.editPayment=editPayment; window.delPayment=delPayment; window.markPaid=markPaid;
+    window.editComplaint=editComplaint; window.delComplaint=delComplaint;
+    window.editVisitor=editVisitor; window.delVisitor=delVisitor; window.checkoutVisitor=checkoutVisitor;
+    window.editNotice=editNotice; window.delNotice=delNotice;
+    window.editMeeting=editMeeting; window.delMeeting=delMeeting;
+    window.editGate=editGate; window.delGate=delGate;
+    window.editRule=editRule; window.delRule=delRule;
+    window.openHelpContactModal=openHelpContactModal; window.editHelpContact=editHelpContact; window.delHelpContact=delHelpContact;
+
+    // init
+    setPage('dashboard');
+    renderNotif();
+  </script>
+</body>
+</html>
