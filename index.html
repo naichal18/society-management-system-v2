@@ -232,7 +232,7 @@
 
   <script>
     // ---------- AUTH & API HELPERS ----------
-    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : '/api';
+    const API_BASE = 'https://society-management-system-v2.onrender.com/api';
     function currentRole() { return localStorage.getItem('role'); }
     function currentToken() { return localStorage.getItem('token'); }
     function currentUser() { return localStorage.getItem('currentUser') || 'Admin'; }
