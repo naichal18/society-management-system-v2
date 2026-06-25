@@ -3,20 +3,18 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
     try {
         let uri = process.env.MONGODB_URI;
-        
-        try {
-            console.log('Attempting to connect to local MongoDB...');
-            const conn = await mongoose.connect(uri);
-            console.log(`MongoDB Connected: ${conn.connection.host}`);
-        } catch (localErr) {
-            console.log('Local MongoDB not found. Starting temporary In-Memory Database...');
-            const { MongoMemoryServer } = require('mongodb-memory-server');
-            const mongoServer = await MongoMemoryServer.create();
-            const memoryUri = mongoServer.getUri();
-            const conn = await mongoose.connect(memoryUri);
-            console.log(`In-Memory Database Connected: ${conn.connection.host}`);
-            console.log('NOTE: Since you are using the in-memory database, data will reset when the server closes.');
+
+        const uri = process.env.MONGODB_URI;
+
+        if (!uri) {
+            throw new Error("MONGODB_URI is not defined in environment variables.");
         }
+
+        console.log("Connecting to MongoDB Atlas...");
+
+        const conn = await mongoose.connect(uri);
+
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
 
         // --- Helper for Dates ---
         const today = new Date();
@@ -49,7 +47,7 @@ const connectDB = async () => {
         }
 
         // --- Unconditional Mock Data Seeding (Removed Host Restrictions) ---
-        
+
         // 1. Gate Keepers
         const GateKeeper = require('../models/GateKeeper');
         if (await GateKeeper.countDocuments() === 0) {
@@ -133,14 +131,14 @@ const connectDB = async () => {
         const Payment = require('../models/Payment');
         if (await Payment.countDocuments() === 0 && residents.length > 0) {
             const statuses = [
-                ...Array(10).fill('Paid'), 
-                ...Array(8).fill('Pending'), 
+                ...Array(10).fill('Paid'),
+                ...Array(8).fill('Pending'),
                 ...Array(4).fill('Overdue')
             ];
-            
+
             let billIdCounter = 1000;
             const bills = [];
-            
+
             residents.forEach((res, i) => {
                 // Ensure at least one bill per resident
                 const s1 = statuses[i % statuses.length];
@@ -151,7 +149,7 @@ const connectDB = async () => {
                     dueDate: formatDate(5), status: s1, paidDate: s1 === 'Paid' ? formatDate(-5) : '',
                     period: 'Aug 2026'
                 });
-                
+
                 // Add a second bill for some residents to hit the 22 total
                 if (i < 10) {
                     const s2 = statuses[(i + residents.length) % statuses.length];
