@@ -63,27 +63,86 @@
 </head>
 <body>
    <!-- LOGIN SCREEN -->
-<div id="loginScreen" class="min-h-screen flex items-center justify-center bg-orange-50">
+<div id="loginScreen_old" style="display:none;" class="min-h-screen flex items-center justify-center bg-orange-50">
   <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
     <h2 class="text-2xl font-bold text-center mb-6">Society Login</h2>
 
     <label class="block text-sm font-semibold">Login As</label>
-    <select id="loginRole" class="w-full border p-2 rounded mb-4">
+    <select id="loginRole_old" class="w-full border p-2 rounded mb-4">
       <option value="admin">Admin</option>
       <option value="resident">Resident</option>
     </select>
 
     <label class="block text-sm font-semibold">Username</label>
-    <input id="loginUser" class="w-full border p-2 rounded mb-4">
+    <input id="loginUser_old" class="w-full border p-2 rounded mb-4">
 
     <label class="block text-sm font-semibold">Password</label>
-    <input id="loginPass" type="password" class="w-full border p-2 rounded mb-6">
+    <input id="loginPass_old" type="password" class="w-full border p-2 rounded mb-6">
 
     <button onclick="doLogin()" class="w-full bg-orange-600 text-white py-2 rounded font-bold">
       Login
     </button>
 
+    <p id="loginError_old" class="text-red-500 text-sm mt-3 text-center"></p>
+  </div>
+</div>
+
+<!-- NEW LOGIN & SIGNUP SCREEN -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center bg-orange-50">
+  <div class="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center mb-2" id="authTitle">Society Login</h2>
+    <p class="text-center text-sm text-slate-500 mb-6" id="authSubtitle">Welcome back! Please enter your details.</p>
+
+    <div id="loginForm">
+      <label class="block text-sm font-semibold">Login As</label>
+      <select id="loginRole" class="w-full border p-2 rounded mb-4">
+        <option value="admin">Admin</option>
+        <option value="resident">Resident</option>
+      </select>
+
+      <label class="block text-sm font-semibold">Email or Phone</label>
+      <input id="loginUser" class="w-full border p-2 rounded mb-4" placeholder="admin / resident">
+
+      <label class="block text-sm font-semibold">Password</label>
+      <input id="loginPass" type="password" class="w-full border p-2 rounded mb-6" placeholder="admin123 / resident123">
+
+      <button onclick="doLogin()" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded font-bold transition-colors">
+        Login
+      </button>
+      
+      <p class="text-center text-sm mt-4">Don't have an account? <button class="text-orange-600 font-bold hover:underline" onclick="toggleAuthMode()">Sign up</button></p>
+    </div>
+
+    <div id="signupForm" class="hidden">
+      <label class="block text-sm font-semibold">Full Name</label>
+      <input id="signupName" class="w-full border p-2 rounded mb-3" placeholder="John Doe">
+      
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-semibold">Flat/Unit</label>
+          <input id="signupFlat" class="w-full border p-2 rounded" placeholder="A-101">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Phone</label>
+          <input id="signupPhone" class="w-full border p-2 rounded" placeholder="9876543210">
+        </div>
+      </div>
+
+      <label class="block text-sm font-semibold">Email Address</label>
+      <input id="signupEmail" type="email" class="w-full border p-2 rounded mb-3" placeholder="john@example.com">
+
+      <label class="block text-sm font-semibold">Password</label>
+      <input id="signupPass" type="password" class="w-full border p-2 rounded mb-6" placeholder="Min 6 characters">
+
+      <button onclick="doSignup()" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded font-bold transition-colors">
+        Create Account
+      </button>
+      
+      <p class="text-center text-sm mt-4">Already have an account? <button class="text-orange-600 font-bold hover:underline" onclick="toggleAuthMode()">Login</button></p>
+    </div>
+
     <p id="loginError" class="text-red-500 text-sm mt-3 text-center"></p>
+    <p id="loginSuccess" class="text-green-600 text-sm mt-3 text-center"></p>
   </div>
 </div>
 
@@ -172,82 +231,217 @@
 
 
   <script>
-   function doLogin(){
-  const roleSel = document.getElementById('loginRole').value;
-  const user = document.getElementById('loginUser').value;
-  const pass = document.getElementById('loginPass').value;
-
-  // HARD CODED (VIVA SAFE)
-  if(roleSel === 'admin' && user === 'admin' && pass === 'admin123'){
-    localStorage.setItem('role','admin');
-  }
-  else if(roleSel === 'resident' && user === 'resident' && pass === 'resident123'){
-    localStorage.setItem('role','resident');
-  }
-  else{
-    document.getElementById('loginError').innerText = 'Invalid credentials';
-    return;
-  }
-
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appShell').classList.remove('hidden');
-  applyRoleAccess(roleSel);
-}
-// ---------- AUTH ----------
-window.onload = () => {
-  const role = localStorage.getItem('role');
-
-  if(role){
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appShell').classList.remove('hidden');
-    applyRoleAccess(role);
-  }
-};
+    // ---------- AUTH & API HELPERS ----------
+    const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:5000/api' : '/api';
+    function currentRole() { return localStorage.getItem('role'); }
+    function currentToken() { return localStorage.getItem('token'); }
+    function currentUser() { return localStorage.getItem('currentUser') || 'Admin'; }
+    function currentUnit() { return localStorage.getItem('currentUnit') || 'A-101'; }
 
     // ------------------------
-    // Local Store (with new sections)
+    // Local Store
     // ------------------------
     const Store = {
       key:'society-manager-data-v2',
       load(){ const raw = localStorage.getItem(this.key); try{ return raw? JSON.parse(raw): null }catch{ return null } },
       save(d){ localStorage.setItem(this.key, JSON.stringify(d)); },
     };
-function doLogin(){
-  const roleSel = document.getElementById('loginRole').value;
-  const user = document.getElementById('loginUser').value;
-  const pass = document.getElementById('loginPass').value;
 
-  // HARD CODED (VIVA SAFE)
-  if(roleSel === 'admin' && user === 'admin' && pass === 'admin123'){
-    localStorage.setItem('role','admin');
-  }
-  else if(roleSel === 'resident' && user === 'resident' && pass === 'resident123'){
-    localStorage.setItem('role','resident');
-  }
-  else{
-    document.getElementById('loginError').innerText = 'Invalid credentials';
-    return;
-  }
+    async function apiCall(endpoint, method = 'GET', body = null) {
+        const token = currentToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        const config = { method, headers };
+        if (body) config.body = JSON.stringify(body);
+        
+        try {
+            const res = await fetch(`${API_BASE}${endpoint}`, config);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'API request failed');
+            }
+            return await res.json();
+        } catch(e) {
+            console.error('API call failed:', method, endpoint, e);
+            throw e;
+        }
+    }
 
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appShell').classList.remove('hidden');
-  applyRoleAccess(roleSel);
-}
-function applyRoleAccess(role){
-  if(role === 'resident'){
-    const restricted = ['settings','gate','rules','meetings'];
-    restricted.forEach(id=>{
-      const btn = document.getElementById('nav-'+id);
-      if(btn) btn.style.display = 'none';
-    });
-  }
-}
-function logout(){
-  localStorage.removeItem('role');
-  location.reload();
-}
+    function simulateLocalApi(endpoint, method, body) {
+        const parts = endpoint.split('/');
+        const resource = parts[1];
+        if (method === 'GET') {
+            if (db[resource]) return db[resource];
+            return [];
+        }
+        if (method === 'POST') {
+            if (db[resource]) {
+                const item = { id: uid(), ...body, createdAt: body.createdAt || today() };
+                db[resource].push(item);
+                Store.save(db);
+                return item;
+            }
+        }
+        if (method === 'PUT') {
+            const id = parts[2];
+            if (db[resource]) {
+                const idx = db[resource].findIndex(x => x.id === id || x._id === id);
+                if (idx > -1) {
+                    db[resource][idx] = { ...db[resource][idx], ...body };
+                    Store.save(db);
+                    return db[resource][idx];
+                }
+            }
+        }
+        if (method === 'DELETE') {
+            const id = parts[2];
+            if (db[resource]) {
+                db[resource] = db[resource].filter(x => x.id !== id && x._id !== id);
+                Store.save(db);
+            }
+            return { message: 'Deleted' };
+        }
+        return {};
+    }
 
+    async function loadInitialData() {
+        try {
+            const [res, maint, pay, comp, vis, noti, meet, rul, help, gk] = await Promise.all([
+                apiCall('/residents').catch(() => null),
+                apiCall('/maintenance').catch(() => null),
+                apiCall('/payments').catch(() => null),
+                apiCall('/complaints').catch(() => null),
+                apiCall('/visitors').catch(() => null),
+                apiCall('/notices').catch(() => null),
+                apiCall('/meetings').catch(() => null),
+                apiCall('/rules').catch(() => null),
+                apiCall('/help').catch(() => null),
+                apiCall('/gatekeepers').catch(() => null)
+            ]);
+            const mapId = arr => arr ? arr.map(x => ({...x, id: x._id || x.id})) : [];
+            if(res) db.residents = mapId(res);
+            if(maint) db.maintenance = mapId(maint);
+            if(pay) db.payments = mapId(pay);
+            if(comp) db.complaints = mapId(comp);
+            if(vis) db.visitors = mapId(vis);
+            if(noti) db.notices = mapId(noti);
+            if(meet) db.meetings = mapId(meet);
+            if(rul) db.rules = mapId(rul);
+            if(help) db.helpContacts = mapId(help);
+            if(gk) db.gateKeepers = mapId(gk);
+            Store.save(db);
+        } catch (e) {
+            console.error('Failed to load initial data from API:', e);
+        }
+    }
 
+    let authMode = 'login';
+    function toggleAuthMode() {
+        authMode = authMode === 'login' ? 'signup' : 'login';
+        document.getElementById('loginForm').style.display = authMode === 'login' ? 'block' : 'none';
+        document.getElementById('signupForm').style.display = authMode === 'signup' ? 'block' : 'none';
+        document.getElementById('authTitle').innerText = authMode === 'login' ? 'Society Login' : 'Resident Signup';
+        document.getElementById('authSubtitle').innerText = authMode === 'login' ? 'Welcome back! Please enter your details.' : 'Create an account to join the society.';
+        document.getElementById('loginError').innerText = '';
+        document.getElementById('loginSuccess').innerText = '';
+    }
+
+    function applyRoleAccess(role){
+      if(role === 'resident'){
+        const restricted = ['gate','rules','meetings'];
+        restricted.forEach(id=>{
+          const btn = document.getElementById('nav-'+id);
+          if(btn) btn.style.display = 'none';
+        });
+      }
+    }
+    
+    function logout(){
+      localStorage.removeItem('role');
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUnit');
+      location.reload();
+    };
+
+    async function doLogin(){
+      const roleSel = document.getElementById('loginRole').value;
+      const user = document.getElementById('loginUser').value;
+      const pass = document.getElementById('loginPass').value;
+      document.getElementById('loginError').innerText = '';
+      
+      try {
+          const res = await fetch(`${API_BASE}/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user, phone: user, password: pass, role: roleSel })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Login failed');
+
+          localStorage.setItem('role', data.role);
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('currentUser', data.name);
+          localStorage.setItem('currentUnit', data.flat || 'N/A');
+
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('appShell').classList.remove('hidden');
+          applyRoleAccess(data.role);
+          await loadInitialData();
+          renderPage();
+      } catch (err) {
+          document.getElementById('loginError').innerText = err.message;
+      }
+    }
+
+    async function doSignup() {
+      const name = document.getElementById('signupName').value;
+      const flat = document.getElementById('signupFlat').value;
+      const phone = document.getElementById('signupPhone').value;
+      const email = document.getElementById('signupEmail').value;
+      const pass = document.getElementById('signupPass').value;
+      document.getElementById('loginError').innerText = '';
+      document.getElementById('loginSuccess').innerText = '';
+
+      if (!name || !flat || !phone || !email || !pass) {
+          document.getElementById('loginError').innerText = 'All fields are required';
+          return;
+      }
+
+      try {
+          const res = await fetch(`${API_BASE}/auth/signup`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, flat, phone, email, password: pass })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Signup failed');
+          
+          document.getElementById('loginSuccess').innerText = 'Signup successful! Please login.';
+          setTimeout(toggleAuthMode, 1500);
+      } catch (err) {
+          document.getElementById('loginError').innerText = err.message;
+      }
+    }
+
+    function applyRoleAccess(role){
+      if(role === 'resident'){
+        const restricted = ['gate','rules','meetings'];
+        restricted.forEach(id=>{
+          const btn = document.getElementById('nav-'+id);
+          if(btn) btn.style.display = 'none';
+        });
+      }
+    }
+
+    function logout(){
+      localStorage.removeItem('role');
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUnit');
+      location.reload();
+    }
 
     const emptyDB = { 
       residents:[], maintenance:[], payments:[], complaints:[], visitors:[], notices:[],
@@ -1125,7 +1319,7 @@ function logout(){
                         window.onload = function() {
                             window.print();
                         }
-                    <\/script>
+                    </scr` + `ipt>
                 </body>
                 </html>
             `);
@@ -1277,7 +1471,7 @@ function logout(){
                             window.onload = function() {
                                 window.print();
                             }
-                        <\/script>
+                        </scr` + `ipt>
                     </body>
                     </html>
                 `);
@@ -1910,13 +2104,15 @@ Requested via Need Help • Urgency: ${byId('h_urg').value}`)
 
         // ----- Settings -----
         function renderSettings() {
+            renderProfile();
             const wrap = document.createElement('div'); wrap.className = 'space-y-4';
             const help = document.createElement('div'); help.className = 'card p-6'; help.innerHTML = `
-        <div class="flex items-center justify-between mb-3"><div class="label">Need Help Contacts</div><button class="btn btn-ghost text-sm" onclick='openHelpContactModal()'>Add Contact</button></div>
+        <div class="flex items-center justify-between mb-3 mt-8"><div class="label">Need Help Contacts (Admin Panel)</div><button class="btn btn-ghost text-sm" onclick='openHelpContactModal()'>Add Contact</button></div>
         <table class="table"><thead><tr><th>Role</th><th>Name</th><th>Phone</th><th></th></tr></thead><tbody id="helpTbody"></tbody></table>`; wrap.appendChild(help);
             help.querySelector('#helpTbody').innerHTML = db.helpContacts.map(h => `<tr><td>${h.role}</td><td>${h.name}</td><td><a class='underline' href='tel:${h.phone}'>${h.phone}</a></td><td class='text-right'><button class='btn btn-ghost text-sm' onclick='editHelpContact("${h.id}")'>Edit</button><button class='btn btn-ghost text-sm' onclick='delHelpContact("${h.id}")'>Delete</button></td></tr>`).join('') || `<tr><td colspan="4" class="py-6 text-center text-slate-500">No contacts</td></tr>`;
             content.appendChild(wrap);
         }
+
         function openHelpContactModal(ex) {
             const d = ex || { role: 'Electrician', name: '', phone: '', description: '', category: 'Maintenance' };
             openModal(ex ? 'Edit Contact' : 'Add Helpline Contact', `
@@ -1963,8 +2159,9 @@ Requested via Need Help • Urgency: ${byId('h_urg').value}`)
 
         function toast(text, type = 'ok') { const el = document.createElement('div'); el.className = 'card px-4 py-3 text-sm'; el.textContent = text; if (type === 'danger') el.style.borderLeft = '4px solid var(--danger)'; else el.style.borderLeft = '4px solid var(--accent)'; document.getElementById('toasts').appendChild(el); setTimeout(() => el.remove(), 2400); }
 
+        // Expose handlers used in inline onclick strings
         window.editResident = editResident; window.delResident = delResident;
-        // Billing functions are exposed via window.* in the billing section above (editBillSidebar, deleteBillConfirm, etc.)
+        window.editPayment = editPayment; window.delPayment = delPayment; window.markPaid = markPaid;
         window.editComplaint = editComplaint; window.delComplaint = delComplaint;
         window.editVisitor = editVisitor; window.delVisitor = delVisitor; window.checkoutVisitor = checkoutVisitor;
         window.editNotice = editNotice; window.delNotice = delNotice;
@@ -1973,12 +2170,13 @@ Requested via Need Help • Urgency: ${byId('h_urg').value}`)
         window.editRule = editRule; window.delRule = delRule;
         window.openHelpContactModal = openHelpContactModal; window.editHelpContact = editHelpContact; window.delHelpContact = delHelpContact;
 
-        // init
+        // ---- Init: restore session on page refresh ----
         if (currentRole() && currentToken()) {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appShell').classList.remove('hidden');
             loadInitialData().then(() => {
                 applyRoleAccess(currentRole());
+                setPage('dashboard');
             }).catch(() => {
                 // Token expired or server down — force re-login
                 localStorage.removeItem('role');
@@ -1991,8 +2189,9 @@ Requested via Need Help • Urgency: ${byId('h_urg').value}`)
         renderNotif();
     </script>
 </body>
-
 </html>
+<!--
+
         <div><div class="label">Vehicles</div><input type="number" min="0" class="input" id="f_veh" value="${d.vehicles}"></div>`,()=>{
         const entry={ id:ex?.id||uid(), name:byId('f_name').value.trim(), flat:byId('f_flat').value.trim(), phone:byId('f_phone').value.trim(), email:byId('f_email').value.trim(), vehicles:Number(byId('f_veh').value||0) };
         if(!entry.name||!entry.flat) return alert('Name & Flat are required');
@@ -2261,4 +2460,4 @@ Requested via Need Help • Urgency: ${byId('h_urg').value}`) };
     renderNotif();
   </script>
 </body>
-</html>
+-->

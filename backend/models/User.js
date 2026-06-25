@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['admin', 'resident'], default: 'resident' },
     // Extended profile fields
+    gender: { type: String, default: '' },
+    occupation: { type: String, default: '' },
     emergencyContact: { type: String, default: '' },
     dob: { type: String, default: '' },
     photo: { type: String, default: '' },
@@ -17,13 +19,26 @@ const userSchema = new mongoose.Schema({
     ownershipStatus: { type: String, default: 'Owner' },
     moveInDate: { type: String, default: '' },
     lastLogin: { type: Date },
-    vehicles: [{ type: { type: String }, number: { type: String } }],
-    familyMembers: [{ name: { type: String }, relation: { type: String }, age: { type: String } }],
+    vehicles: [{ 
+        type: { type: String }, 
+        brand: { type: String }, 
+        model: { type: String }, 
+        number: { type: String }, 
+        parkingSlot: { type: String } 
+    }],
+    familyMembers: [{ 
+        name: { type: String }, 
+        relation: { type: String }, 
+        age: { type: String }, 
+        mobile: { type: String } 
+    }],
     notifPrefs: {
-        meetings:   { type: Boolean, default: true },
-        bills:      { type: Boolean, default: true },
-        complaints: { type: Boolean, default: true },
-        visitors:   { type: Boolean, default: true }
+        meetings:     { type: Boolean, default: true },
+        bills:        { type: Boolean, default: true },
+        complaints:   { type: Boolean, default: true },
+        visitors:     { type: Boolean, default: true },
+        maintenance:  { type: Boolean, default: true },
+        announcements:{ type: Boolean, default: true }
     }
 }, { timestamps: true });
 

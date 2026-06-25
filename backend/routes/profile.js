@@ -19,7 +19,7 @@ router.put('/', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
-        const fields = ['name','email','phone','emergencyContact','dob','photo','block','floor','ownershipStatus','moveInDate','notifPrefs'];
+        const fields = ['name','email','phone','emergencyContact','dob','gender','occupation','photo','block','floor','ownershipStatus','moveInDate','notifPrefs'];
         fields.forEach(f => { if (req.body[f] !== undefined) user[f] = req.body[f]; });
         await user.save();
         const updated = await User.findById(req.user.id).select('-password');
